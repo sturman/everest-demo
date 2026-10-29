@@ -7,9 +7,6 @@ name: build-images
 # under QEMU) and the per-arch images are merged into one multi-arch manifest.
 
 on:
-  pull_request:
-    branches:
-      - build/everest-2026.02.1
   push:
     branches:
       - build/everest-2026.02.1
@@ -109,7 +106,6 @@ jobs:
           images: ${{ env.IMAGE }}
 
       - name: Log into GitHub container registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -123,12 +119,11 @@ jobs:
           context: ${{ matrix.image.context }}
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.arch }}
 
       - name: Export digest
-        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/digests"
@@ -136,7 +131,6 @@ jobs:
           touch "${RUNNER_TEMP}/digests/${digest#sha256:}"
 
       - name: Upload digest
-        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.image.name }}-${{ matrix.arch }}
@@ -145,7 +139,6 @@ jobs:
           retention-days: 1
 
   merge:
-    if: github.event_name != 'pull_request'
     needs: [prepare, build]
     runs-on: ubuntu-latest
 
